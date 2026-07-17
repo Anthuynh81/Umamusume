@@ -59,22 +59,28 @@ async function main() {
       versioned('ura-objectives'),
     ])
 
-  // --- characters + theme colors (umapyoi, best effort) --------------------
+  // --- characters + theme colors/thumbnails (umapyoi, best effort) ---------
+  // Thumbnails are HOTLINKED official CDN URLs (© Cygames) — never vendored
+  // into the repo; the Avatar component falls back to silhouettes when a
+  // URL is missing or fails to load.
   let colorByCharaId = new Map()
+  let thumbByCharaId = new Map()
   try {
-    console.log('Fetching umapyoi colors…')
+    console.log('Fetching umapyoi colors + thumbnails…')
     const idMap = await fetchJson('https://umapyoi.net/api/v1/character') // [{game_id, web_id}]
-    const list = await fetchJson('https://umapyoi.net/api/v1/character/list') // [{id(web), color_main,…}]
+    const list = await fetchJson('https://umapyoi.net/api/v1/character/list') // [{id(web), color_main, thumb_img,…}]
     const webToGame = new Map(idMap.map((x) => [x.web_id, x.game_id]))
     for (const c of list) {
       const gameId = webToGame.get(c.id)
-      if (gameId && c.color_main) {
+      if (!gameId) continue
+      if (c.color_main) {
         colorByCharaId.set(gameId, c.color_main.startsWith('#') ? c.color_main : `#${c.color_main}`)
       }
+      if (c.thumb_img && /^https:\/\//.test(c.thumb_img)) thumbByCharaId.set(gameId, c.thumb_img)
     }
-    console.log(`  colors for ${colorByCharaId.size} characters`)
+    console.log(`  colors for ${colorByCharaId.size}, thumbnails for ${thumbByCharaId.size} characters`)
   } catch (err) {
-    console.warn(`  umapyoi colors unavailable (${err.message}) — continuing without`)
+    console.warn(`  umapyoi data unavailable (${err.message}) — continuing without`)
   }
 
   const characters = charactersRaw
@@ -83,6 +89,7 @@ async function main() {
       id: c.char_id,
       name: c.en_name,
       color: colorByCharaId.get(c.char_id) ?? null,
+      image: thumbByCharaId.get(c.char_id) ?? null,
       global: Boolean(c.playable_en),
     }))
     .sort((a, b) => a.id - b.id)

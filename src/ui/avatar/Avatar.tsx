@@ -1,9 +1,10 @@
 /**
- * Placeholder character avatars: original, deliberately abstract uma-girl
- * silhouettes (no official assets, not traced from art), tinted with the
- * character's theme color. This is the swappable asset layer — replace the
- * body of <Avatar> to move to real images later without touching callers.
+ * Character avatars: the official thumbnail (hotlinked from the game's CDN,
+ * © Cygames — recorded per character by the data pipeline, never vendored
+ * into the repo) with an original tinted-silhouette fallback whenever the
+ * image is missing or fails to load. This is the swappable asset layer.
  */
+import { useState } from 'react'
 import type { CharacterDef } from '../../data/types'
 
 /** Deterministic fallback color for characters without a theme color. */
@@ -47,14 +48,14 @@ function SilhouettePath({ variant }: { variant: number }) {
   }
 }
 
-export function Avatar({
+function Silhouette({
   chara,
-  size = 40,
-  className = '',
+  size,
+  className,
 }: {
   chara: CharacterDef | undefined
-  size?: number
-  className?: string
+  size: number
+  className: string
 }) {
   const color = chara?.color ?? (chara ? hashColor(chara.id) : '#cbd5e1')
   return (
@@ -77,5 +78,33 @@ export function Avatar({
         </g>
       )}
     </svg>
+  )
+}
+
+export function Avatar({
+  chara,
+  size = 40,
+  className = '',
+}: {
+  chara: CharacterDef | undefined
+  size?: number
+  className?: string
+}) {
+  const [failed, setFailed] = useState(false)
+
+  if (!chara?.image || failed) {
+    return <Silhouette chara={chara} size={size} className={className} />
+  }
+  return (
+    <img
+      src={chara.image}
+      alt={chara.name}
+      width={size}
+      height={size}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      className={`shrink-0 rounded-full bg-slate-100 object-cover ${className}`}
+    />
   )
 }

@@ -16,6 +16,11 @@ export interface CharacterDef {
   name: string
   /** Theme color for the silhouette avatar layer, "#rrggbb" if known. */
   color: string | null
+  /**
+   * Official thumbnail URL (hotlinked from the game's CDN via umapyoi, ©
+   * Cygames — never vendored). Null → silhouette avatar.
+   */
+  image: string | null
   /** Playable on Global. */
   global: boolean
 }

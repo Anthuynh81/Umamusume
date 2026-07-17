@@ -41,11 +41,11 @@ class StubRelations implements RelationBackend {
 export function fixtureData(): GameData {
   return new GameData({
     characters: [
-      { id: 1, name: 'Alfa Wing', color: '#7ec4ef', global: true },
-      { id: 2, name: 'Bravo Heart', color: null, global: true },
-      { id: 3, name: 'Charlie Dash', color: null, global: true },
-      { id: 4, name: 'Delta Storm', color: null, global: true },
-      { id: 5, name: 'Echo Flash', color: null, global: false },
+      { id: 1, name: 'Alfa Wing', color: '#7ec4ef', image: null, global: true },
+      { id: 2, name: 'Bravo Heart', color: null, image: null, global: true },
+      { id: 3, name: 'Charlie Dash', color: null, image: null, global: true },
+      { id: 4, name: 'Delta Storm', color: null, image: null, global: true },
+      { id: 5, name: 'Echo Flash', color: null, image: null, global: false },
     ],
     variants: [
       { id: 101, charaId: 1, title: 'Original', rarity: 3, aptitudes: apts(), uniqueSkillId: 9101, global: true },
