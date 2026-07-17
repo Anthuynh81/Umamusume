@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Sparkline — an inheritance (legacy) planner for Umamusume: Pretty Derby. Plan family trees, sparks/factors, affinity and inheritance rates. Unofficial fan tool."
+    />
+    <title>Sparkline — Umamusume Legacy Planner</title>
+    <script>
+      // Apply the theme before first paint to avoid a light flash. Mirrors
+      // the App theme effect; settings live in localStorage.
+      try {
+        var t = (JSON.parse(localStorage.getItem('sparkline.settings.v1') || '{}').theme) || 'system'
+        if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
