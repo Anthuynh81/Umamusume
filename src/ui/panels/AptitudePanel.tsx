@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import type { GameData } from '../../data/types'
-import { effectiveAptitudes, pinkPool, raisedIntoPool } from '../../engine/aptitude'
+import {
+  applyRaise, aptitudeDeficits, effectiveAptitudes, pinkPool, raisedIntoPool,
+} from '../../engine/aptitude'
 import { slotLabel } from '../../model/tree'
 import { APTITUDE_GROUPS, APTITUDE_KEYS, APTITUDE_LABELS } from '../../model/types'
-import type { AptitudeKey, Grade } from '../../model/types'
+import type { AptitudeKey, Grade, Tree } from '../../model/types'
 import { useTreeStore } from '../../store/tree'
 
 const GRADE_COLORS: Record<Grade, string> = {
@@ -123,6 +125,113 @@ export function AptitudePanel({ data }: { data: GameData }) {
         ))}
         <p className="text-slate-400">Starting raises cap at A; S needs an Inspiration proc.</p>
       </div>
+
+      {slotIndex === 0 && <ReversePlanner tree={tree} data={data} />}
     </section>
+  )
+}
+
+/**
+ * Reverse planner: set target starting grades for the trainee, get the star
+ * deficits and the lineage slots that could carry the missing pinks.
+ */
+function ReversePlanner({ tree, data }: { tree: Tree; data: GameData }) {
+  const [targets, setTargets] = useState<Partial<Record<AptitudeKey, Grade>>>({})
+  const trainee = tree.slots[0]
+  const variant = trainee ? data.variant(trainee.variantId) : undefined
+
+  const deficits = useMemo(
+    () => (variant ? aptitudeDeficits(tree, variant.aptitudes, targets) : []),
+    [tree, variant, targets],
+  )
+  if (!variant) return null
+
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-xs font-bold text-slate-700">
+          Targets <span className="text-[10px] font-normal text-slate-400">reverse planner — what pinks does she still need?</span>
+        </h3>
+        <select
+          value=""
+          onChange={(e) => {
+            const key = e.target.value as AptitudeKey
+            if (key) setTargets((t) => ({ ...t, [key]: t[key] ?? 'A' }))
+          }}
+          aria-label="Add aptitude target"
+          className="ml-auto rounded border border-slate-300 px-1 py-0.5 text-[11px]"
+        >
+          <option value="">+ target…</option>
+          {APTITUDE_KEYS.filter((k) => !(k in targets)).map((k) => (
+            <option key={k} value={k}>{APTITUDE_LABELS[k]}</option>
+          ))}
+        </select>
+      </div>
+
+      {deficits.length === 0 ? (
+        <p className="mt-1 text-[11px] text-slate-400">
+          Add a target (e.g. Dirt → A) to see how many pink stars the lineage still needs.
+        </p>
+      ) : (
+        <ul className="mt-1.5 space-y-1 text-[11px]">
+          {deficits.map((d) => (
+            <li key={d.key} className="rounded border border-slate-100 px-2 py-1">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold">{APTITUDE_LABELS[d.key]}</span>
+                <span className="text-slate-400">{d.base} →</span>
+                <select
+                  value={d.target}
+                  onChange={(e) => setTargets((t) => ({ ...t, [d.key]: e.target.value as Grade }))}
+                  aria-label={`${APTITUDE_LABELS[d.key]} target grade`}
+                  className="rounded border border-slate-300 px-1 py-0 text-[11px]"
+                >
+                  {(['S', 'A', 'B', 'C', 'D', 'E'] as Grade[]).map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+                <span className="ml-auto tabular-nums">
+                  {!d.achievable && d.target === 'S' ? (
+                    <span className="text-amber-600">needs a proc (start caps at A)</span>
+                  ) : !d.achievable ? (
+                    <span className="text-red-600">unreachable — +4 from {d.base} is {applyRaise(d.base, 4)}</span>
+                  ) : d.deficit === 0 ? (
+                    <span className="text-emerald-600">met ✓ ({d.currentStars}★)</span>
+                  ) : (
+                    <span className="font-semibold text-indigo-600">
+                      {d.deficit}★ more ({d.currentStars}/{d.neededStars})
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${APTITUDE_LABELS[d.key]} target`}
+                  onClick={() =>
+                    setTargets((t) => {
+                      const { [d.key]: _drop, ...rest } = t
+                      return rest
+                    })
+                  }
+                  className="text-slate-300 hover:text-red-500"
+                >
+                  ×
+                </button>
+              </div>
+              {d.deficit > 0 && d.achievable && (
+                <p className="mt-0.5 text-[10px] text-slate-400">
+                  Room for it:{' '}
+                  {[
+                    d.emptySlots.length > 0 && `${d.emptySlots.length} empty (${d.emptySlots.map(slotLabel).join(', ')})`,
+                    d.pinklessSlots.length > 0 && `${d.pinklessSlots.length} without a pink (${d.pinklessSlots.map(slotLabel).join(', ')})`,
+                    d.upgradableSlots.length > 0 && `${d.upgradableSlots.length} upgradable ${APTITUDE_LABELS[d.key]} cop${d.upgradableSlots.length > 1 ? 'ies' : 'y'}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || 'no open slots — swap a pink somewhere'}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

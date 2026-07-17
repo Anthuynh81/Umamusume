@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatDate } from '../lib/format'
+import { treeProgress } from '../model/progress'
 import {
   deleteTreeSave, downloadJson, exportBackup, importBackup, listTreeSaves, saveTree,
 } from '../store/persist'
@@ -54,7 +55,17 @@ export function SavesView() {
           <li key={s.id} className="flex items-center gap-2 py-1.5 text-xs">
             <div className="min-w-0 flex-1">
               <div className="truncate font-medium">{s.name}</div>
-              <div className="text-[10px] text-slate-400">{formatDate(s.updatedAt)}</div>
+              <div className="text-[10px] text-slate-400">
+                {formatDate(s.updatedAt)}
+                {(() => {
+                  const p = treeProgress(s.tree)
+                  return p.filled > 0 ? (
+                    <span className={`ml-2 ${p.ready === p.filled ? 'text-emerald-600' : ''}`}>
+                      {p.ready}/{p.filled} ready
+                    </span>
+                  ) : null
+                })()}
+              </div>
             </div>
             <button
               type="button"

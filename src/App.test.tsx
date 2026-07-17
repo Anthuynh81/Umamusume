@@ -72,10 +72,15 @@ describe('App', () => {
     const rates = screen.getByRole('region', { name: 'Inheritance rates' })
     expect(within(rates).getByText('Stamina')).toBeTruthy()
 
-    // Aptitudes tool reflects Special Week's base turf A.
+    // Aptitudes tool reflects Special Week's base turf A, and the reverse
+    // planner is available for the trainee.
     openTool('Aptitudes')
     const aptitudes = screen.getByRole('region', { name: 'Aptitudes' })
-    expect(within(aptitudes).getByText('Turf')).toBeTruthy()
+    expect(within(aptitudes).getAllByText('Turf').length).toBeGreaterThan(0)
+    fireEvent.change(within(aptitudes).getByLabelText('Add aptitude target'), { target: { value: 'dirt' } })
+    expect(within(aptitudes).getByLabelText('Dirt target grade')).toBeTruthy()
+    // Special Week dirt G → A is beyond the +4 raise ceiling.
+    expect(within(aptitudes).getByText(/unreachable/)).toBeTruthy()
   })
 
   it('aggregates flagged sparks in the wishlist panel', async () => {

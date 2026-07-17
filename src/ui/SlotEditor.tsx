@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { GameData } from '../data/types'
+import { rentalText } from '../lib/rentalText'
 import { slotLabel } from '../model/tree'
 import { SLOT_STATUSES, emptyBuild } from '../model/types'
 import type { SlotStatus } from '../model/types'
@@ -160,6 +161,23 @@ export function SlotEditor({ data }: { data: GameData }) {
               >
                 Save to library
               </button>
+              {build.status === 'rental' && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(rentalText(build, data))
+                      setSavedNote('Rental request copied — paste it in Discord or a friend search.')
+                    } catch {
+                      prompt('Copy this rental request:', rentalText(build, data))
+                    }
+                  }}
+                  className="rounded border border-violet-300 px-3 py-1 text-xs text-violet-700 hover:bg-violet-50"
+                  title="Copy a text summary of this required uma for finding a friend rental"
+                >
+                  Copy rental request
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {

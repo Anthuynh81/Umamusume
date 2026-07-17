@@ -117,3 +117,80 @@ export function raisedIntoPool(report: AptitudeReport): AptitudeKey[] {
     (k) => gradeIndex(report[k].base) < aIdx && gradeIndex(report[k].effective) >= aIdx,
   )
 }
+
+// ---------------------------------------------------------------------------
+// Reverse planner: from target grades to star deficits
+// ---------------------------------------------------------------------------
+
+export interface AptitudeDeficit {
+  key: AptitudeKey
+  target: Grade
+  base: Grade
+  /** Total same-aptitude stars the lineage must carry to reach the target. */
+  neededStars: number
+  currentStars: number
+  /** Stars still missing (0 = target already met). */
+  deficit: number
+  /**
+   * False when starting raises cannot reach the target (above A — S needs an
+   * Inspiration proc on top of an A start).
+   */
+  achievable: boolean
+  /** Trainee-lineage slots that could carry the missing pinks: empty ones. */
+  emptySlots: number[]
+  /** Filled lineage slots with no pink assigned yet. */
+  pinklessSlots: number[]
+  /** Filled lineage slots already carrying this pink below 3★ (upgradable). */
+  upgradableSlots: number[]
+}
+
+/**
+ * Star deficits to reach target starting grades on the trainee, with the
+ * slots that could cover them. Thresholds: n stages need 3n−2 stars.
+ */
+export function aptitudeDeficits(
+  tree: Tree,
+  baseAptitudes: Aptitudes,
+  targets: Partial<Record<AptitudeKey, Grade>>,
+): AptitudeDeficit[] {
+  const report = effectiveAptitudes(tree, 0, baseAptitudes)
+  const capIdx = gradeIndex(APTITUDE_RAISE_CAP_GRADE)
+
+  const results: AptitudeDeficit[] = []
+  for (const [key, target] of Object.entries(targets) as [AptitudeKey, Grade][]) {
+    const base = baseAptitudes[key]
+    const baseIdx = gradeIndex(base)
+    const targetIdx = gradeIndex(target)
+    // Starting raises cap at A and at +4 stages; anything beyond is
+    // unreachable from this base (S additionally needs an Inspiration proc).
+    const stagesWanted = Math.max(0, Math.min(targetIdx, capIdx) - baseIdx)
+    const achievable = baseIdx >= targetIdx || (targetIdx <= capIdx && stagesWanted <= 4)
+    const stages = Math.min(stagesWanted, 4)
+    const neededStars = stages === 0 ? 0 : APTITUDE_RAISE_THRESHOLDS[stages - 1]!
+    const currentStars = report[key].totalStars
+
+    const emptySlots: number[] = []
+    const pinklessSlots: number[] = []
+    const upgradableSlots: number[] = []
+    for (const slot of lineageOf(0)) {
+      const build = tree.slots[slot]
+      if (!build) emptySlots.push(slot)
+      else if (!build.pink) pinklessSlots.push(slot)
+      else if (build.pink.aptitude === key && build.pink.stars < 3) upgradableSlots.push(slot)
+    }
+
+    results.push({
+      key,
+      target,
+      base,
+      neededStars,
+      currentStars,
+      deficit: Math.max(0, neededStars - currentStars),
+      achievable,
+      emptySlots,
+      pinklessSlots,
+      upgradableSlots,
+    })
+  }
+  return results
+}

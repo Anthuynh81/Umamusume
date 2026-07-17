@@ -4,6 +4,7 @@ import { affinityBreakdown, lineageErrors } from '../engine/affinity'
 import { TIER_SYMBOLS } from '../engine/affinity'
 import { downloadBlob, exportTreePng } from '../export/treeImage'
 import { generationSlots } from '../model/tree'
+import { treeProgress } from '../model/progress'
 import { useTreeStore } from '../store/tree'
 import { SlotCard } from './SlotCard'
 
@@ -49,6 +50,20 @@ export function TreeView({ data }: { data: GameData }) {
           <span title="Total affinity" className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-700">
             {TIER_SYMBOLS[breakdown.tier]} {breakdown.total}
           </span>
+          {(() => {
+            const p = treeProgress(tree)
+            if (p.filled === 0) return null
+            return (
+              <span
+                title={`Farming progress — farmed ${p.byStatus.farmed} · borrowed ${p.byStatus.borrowed} · rental ${p.byStatus.rental} · still planned ${p.byStatus.planned} (set per slot in the editor)`}
+                className={`ml-1 rounded px-1.5 py-0.5 text-xs font-bold ${
+                  p.ready === p.filled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                {p.ready}/{p.filled} ready
+              </span>
+            )
+          })()}
         </h2>
         <div className="ml-auto flex items-center gap-2 text-xs">
           <span className="flex items-center gap-1" role="group" aria-label="Export as image">

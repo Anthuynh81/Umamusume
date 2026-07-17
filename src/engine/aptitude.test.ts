@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  applyRaise, effectiveAptitudes, excessStars, pinkPool, raiseStages,
-  raisedIntoPool, starsToNextStage,
+  applyRaise, aptitudeDeficits, effectiveAptitudes, excessStars, pinkPool,
+  raiseStages, raisedIntoPool, starsToNextStage,
 } from './aptitude'
 import { apts, fixtureTree } from './fixtures'
 
@@ -95,5 +95,39 @@ describe('pink pool (generation)', () => {
 
   it('includes S grades in the pool', () => {
     expect(pinkPool({ ...apts(), turf: 'S' })).toContain('turf')
+  })
+})
+
+describe('aptitudeDeficits (reverse planner)', () => {
+  // Fixture: base dirt G with 6 lineage dirt stars (slots 1/2/4).
+  it('computes star deficits toward a reachable target', () => {
+    const [d] = aptitudeDeficits(fixtureTree(), apts(), { dirt: 'C' })
+    // G→C = 4 stages = 10★; 6 already in the lineage.
+    expect(d).toMatchObject({ key: 'dirt', neededStars: 10, currentStars: 6, deficit: 4, achievable: true })
+  })
+
+  it('flags targets beyond the +4 raise ceiling', () => {
+    const [d] = aptitudeDeficits(fixtureTree(), apts(), { dirt: 'A' })
+    expect(d!.achievable).toBe(false) // G tops out at C
+    expect(d!.neededStars).toBe(10)
+  })
+
+  it('reports met targets as zero deficit', () => {
+    const [d] = aptitudeDeficits(fixtureTree(), apts(), { long: 'B' })
+    expect(d).toMatchObject({ neededStars: 0, deficit: 0, achievable: true })
+  })
+
+  it('marks S targets as needing a proc even from base A', () => {
+    const [d] = aptitudeDeficits(fixtureTree(), apts(), { turf: 'S' })
+    expect(d).toMatchObject({ neededStars: 0, deficit: 0, achievable: false })
+  })
+
+  it('identifies slots that could carry the missing pinks', () => {
+    const tree = fixtureTree()
+    tree.slots[3] = null
+    const [d] = aptitudeDeficits(tree, apts(), { dirt: 'C' })
+    expect(d!.emptySlots).toEqual([3])
+    expect(d!.pinklessSlots).toEqual([6]) // filled, no pink assigned
+    expect(d!.upgradableSlots).toEqual([2, 4]) // dirt 1★ and 2★ copies
   })
 })
