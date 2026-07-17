@@ -28,6 +28,13 @@ export interface OptimizerCandidate {
   variantId: number
   name: string
   wonRaces: number[]
+  /**
+   * True if this uma exists in the user's own roster. Non-owned umas
+   * (rentals/borrowed ancestors) can only appear as a parent — the game
+   * allows a single borrow per career, and grandparents must be your own
+   * trained umas.
+   */
+  owned: boolean
 }
 
 export interface Arrangement {
@@ -45,6 +52,11 @@ export interface OptimizeOptions {
   /** Candidate ids that must occupy parent slots (0-2 entries). */
   requiredParentIds?: number[]
   raceBonusRule?: RaceBonusRule
+  /**
+   * Non-owned umas allowed in the arrangement (parent slots only).
+   * Default 1 — the game's one-borrow-per-career rule.
+   */
+  maxBorrowed?: number
 }
 
 /** How many top gp-pairs per side to scan when resolving cross-side overlap. */
@@ -96,10 +108,13 @@ export function optimizeArrangements(
     ids: number[]
     score: number
   }
+  const maxBorrowed = opts.maxBorrowed ?? 1
+
   const sideOptions = new Map<number, SideOption[]>()
   for (const p of pool) {
     const cp = charaOf.get(p.id)!
-    const eligible = pool.filter((x) => x.id !== p.id && charaOf.get(x.id) !== cp)
+    // Grandparent slots are OWNED umas only — a borrow can only be a parent.
+    const eligible = pool.filter((x) => x.owned && x.id !== p.id && charaOf.get(x.id) !== cp)
     const options: SideOption[] = []
     for (let i = 0; i < eligible.length; i++) {
       const x = eligible[i]!
@@ -149,6 +164,7 @@ export function optimizeArrangements(
       const b = parents[j]!
       if (charaOf.get(a.id) === charaOf.get(b.id)) continue
       if (required.length > 0 && !required.every((id) => id === a.id || id === b.id)) continue
+      if ((a.owned ? 0 : 1) + (b.owned ? 0 : 1) > maxBorrowed) continue
 
       const sides = bestSides(a, b)
       if (!sides) continue

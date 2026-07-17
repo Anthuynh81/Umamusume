@@ -18,6 +18,7 @@ export function OptimizerPanel({ data }: { data: GameData }) {
   const setSlot = useTreeStore((s) => s.setSlot)
   const [umas, setUmas] = useState<LibraryUma[]>([])
   const [required, setRequired] = useState<number[]>([])
+  const [ownedOnly, setOwnedOnly] = useState(false)
   const [results, setResults] = useState<Arrangement[] | null>(null)
 
   useEffect(() => {
@@ -33,8 +34,9 @@ export function OptimizerPanel({ data }: { data: GameData }) {
     () =>
       umas
         .filter((u) => u.id !== undefined)
-        .map((u) => ({ id: u.id!, variantId: u.build.variantId, name: u.name, wonRaces: u.build.wonRaces })),
-    [umas],
+        .filter((u) => !ownedOnly || u.owned)
+        .map((u) => ({ id: u.id!, variantId: u.build.variantId, name: u.name, wonRaces: u.build.wonRaces, owned: u.owned })),
+    [umas, ownedOnly],
   )
 
   const run = () => {
@@ -44,6 +46,7 @@ export function OptimizerPanel({ data }: { data: GameData }) {
         limit: 10,
         requiredParentIds: required,
         raceBonusRule: rule,
+        maxBorrowed: ownedOnly ? 0 : 1,
       }),
     )
   }
@@ -67,6 +70,13 @@ export function OptimizerPanel({ data }: { data: GameData }) {
       <div className="flex items-center gap-2">
         <h2 className="text-sm font-bold text-slate-700">Library optimizer</h2>
         <span className="text-[10px] text-slate-400">{candidates.length} umas</span>
+        <label
+          className="flex items-center gap-1 text-[11px] text-slate-500"
+          title="Exclude rentals/borrowed ancestors entirely (otherwise at most ONE non-owned uma is allowed, as a parent — the game's one-borrow rule)"
+        >
+          <input type="checkbox" checked={ownedOnly} onChange={(e) => setOwnedOnly(e.target.checked)} />
+          only my umas
+        </label>
         <button
           type="button"
           onClick={run}
@@ -108,7 +118,17 @@ export function OptimizerPanel({ data }: { data: GameData }) {
                       {TIER_SYMBOLS[arr.tier]} {arr.score}
                     </span>
                     <span className="truncate text-slate-600">
-                      {arr.parents.map((p) => p.name).join(' + ')}
+                      {arr.parents.map((p) => (
+                        <span key={p.id}>
+                          {p !== arr.parents[0] && ' + '}
+                          {p.name}
+                          {!p.owned && (
+                            <span className="ml-0.5 rounded bg-violet-100 px-1 text-[10px] text-violet-700" title="Not in your roster — this is the career's one allowed borrow">
+                              rental
+                            </span>
+                          )}
+                        </span>
+                      ))}
                     </span>
                     <button
                       type="button"
@@ -129,7 +149,8 @@ export function OptimizerPanel({ data }: { data: GameData }) {
           )}
           <p className="mt-1 text-[10px] text-slate-400">
             Scores include base affinity + shared-win bonuses from each uma's won races ({rule === 'global-legacy' ? 'Global rule' : 'JP rule'}).
-            Applying replaces the six legacy slots with the full saved builds.
+            At most one non-owned uma per arrangement, parent slot only (the game's one-borrow rule); grandparents are
+            always your own. Applying replaces the six legacy slots with the full saved builds.
           </p>
         </>
       )}

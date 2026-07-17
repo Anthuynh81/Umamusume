@@ -10,12 +10,12 @@ const data = fixtureData()
 /** Library: charas 2,3,4,5 plus TWO copies of the trainee's chara 1. */
 function library(): OptimizerCandidate[] {
   return [
-    { id: 11, variantId: 201, name: 'Bravo (trained)', wonRaces: [1101, 1105] },
-    { id: 12, variantId: 301, name: 'Charlie (trained)', wonRaces: [] },
-    { id: 13, variantId: 401, name: 'Delta (trained)', wonRaces: [1101] },
-    { id: 14, variantId: 501, name: 'Echo (trained)', wonRaces: [] },
-    { id: 15, variantId: 102, name: 'Alfa alt (trained)', wonRaces: [] },
-    { id: 16, variantId: 101, name: 'Alfa (trained)', wonRaces: [] },
+    { id: 11, variantId: 201, name: 'Bravo (trained)', wonRaces: [1101, 1105], owned: true },
+    { id: 12, variantId: 301, name: 'Charlie (trained)', wonRaces: [], owned: true },
+    { id: 13, variantId: 401, name: 'Delta (trained)', wonRaces: [1101], owned: true },
+    { id: 14, variantId: 501, name: 'Echo (trained)', wonRaces: [], owned: true },
+    { id: 15, variantId: 102, name: 'Alfa alt (trained)', wonRaces: [], owned: true },
+    { id: 16, variantId: 101, name: 'Alfa (trained)', wonRaces: [], owned: true },
   ]
 }
 
@@ -99,5 +99,43 @@ describe('optimizeArrangements', () => {
 
   it('returns empty for an empty library', () => {
     expect(optimizeArrangements(1, [], data)).toEqual([])
+  })
+})
+
+describe('borrow rules', () => {
+  /** Bravo and Charlie are rentals; extra owned umas keep gp slots fillable. */
+  function mixedLibrary(): OptimizerCandidate[] {
+    return [
+      ...library().map((c) => (c.id === 11 || c.id === 12 ? { ...c, owned: false } : c)),
+      { id: 17, variantId: 301, name: 'Charlie (own copy)', wonRaces: [], owned: true },
+      { id: 18, variantId: 401, name: 'Delta (second)', wonRaces: [], owned: true },
+    ]
+  }
+
+  it('never places a borrowed uma in a grandparent slot', () => {
+    for (const arr of optimizeArrangements(1, mixedLibrary(), data, { limit: 50 })) {
+      for (const gp of arr.gps.flat()) expect(gp.owned).toBe(true)
+    }
+  })
+
+  it('allows at most one borrowed parent (the one-borrow rule)', () => {
+    const results = optimizeArrangements(1, mixedLibrary(), data, { limit: 50 })
+    expect(results.length).toBeGreaterThan(0)
+    // Bravo (100 pair) still tops the list as the single allowed rental…
+    expect(results[0]!.parents.some((p) => !p.owned)).toBe(true)
+    for (const arr of results) {
+      const borrowed = [...arr.parents, ...arr.gps.flat()].filter((c) => !c.owned).length
+      expect(borrowed).toBeLessThanOrEqual(1)
+    }
+    // …and no result pairs the two rentals together.
+    expect(
+      results.some((arr) => arr.parents.every((p) => !p.owned)),
+    ).toBe(false)
+  })
+
+  it('maxBorrowed 0 excludes rentals entirely', () => {
+    for (const arr of optimizeArrangements(1, mixedLibrary(), data, { limit: 50, maxBorrowed: 0 })) {
+      for (const c of [...arr.parents, ...arr.gps.flat()]) expect(c.owned).toBe(true)
+    }
   })
 })
