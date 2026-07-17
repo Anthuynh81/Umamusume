@@ -33,6 +33,7 @@ export function LibraryView({ data }: { data: GameData }) {
   const [sort, setSort] = useState<SortKey>('newest')
   const importRef = useRef<HTMLInputElement>(null)
   const setClipboard = useTreeStore((s) => s.setClipboard)
+  const setOwnedSupports = useTreeStore((s) => s.setOwnedSupports)
   const tree = useTreeStore((s) => s.tree)
 
   const refresh = useCallback(() => {
@@ -110,6 +111,7 @@ export function LibraryView({ data }: { data: GameData }) {
               try {
                 const result = importUmaExtractor(JSON.parse(text), data)
                 for (const { entry } of result.umas) await saveUmaToLibrary(entry)
+                setOwnedSupports(result.supportCards)
                 let ancestorNote = ''
                 if (
                   result.ancestors.length > 0 &&

@@ -45,7 +45,7 @@ async function main() {
     return gametora(`${key}.${hash}`)
   }
 
-  const [charactersRaw, cardsRaw, skillsRaw, factorsRaw, racesRaw, relRaw, relMemberRaw, skillsLoc, raceInstancesRaw, uraObjectivesRaw] =
+  const [charactersRaw, cardsRaw, skillsRaw, factorsRaw, racesRaw, relRaw, relMemberRaw, skillsLoc, raceInstancesRaw, uraObjectivesRaw, supportCardsRaw] =
     await Promise.all([
       versioned('characters'),
       versioned('character-cards'),
@@ -57,6 +57,7 @@ async function main() {
       fetchJson('https://gametora.com/loc/umamusume/skills.json'),
       versioned('race_instances'),
       versioned('ura-objectives'),
+      versioned('support-cards'),
     ])
 
   // --- characters + theme colors/thumbnails (umapyoi, best effort) ---------
@@ -187,6 +188,18 @@ async function main() {
     })
     .sort((a, b) => a.id - b.id)
 
+  // --- support cards (which cards can teach a skill during a run) -----------
+  const supportsOut = supportCardsRaw
+    .map((c) => ({
+      id: c.support_id,
+      name: [c.title_en, c.char_name].filter(Boolean).join(' '),
+      rarity: c.rarity,
+      type: c.type ?? null,
+      skillIds: [...new Set([...(c.hints?.hint_skills ?? []), ...(c.event_skills ?? [])])],
+      global: c.release_en != null,
+    }))
+    .sort((a, b) => a.id - b.id)
+
   // --- unique skills (green spark labels) -----------------------------------
   const uniqueIds = [...new Set(variants.map((v) => v.uniqueSkillId).filter((x) => x != null))]
   const uniqueSkills = uniqueIds
@@ -275,6 +288,7 @@ async function main() {
   }
   assert(pairPoints(1001, 1002) > 0, 'relation points computable (1001×1002)')
   assert(skillsOut.length >= 1500, 'full skill table')
+  assert(supportsOut.length >= 400 && supportsOut.some((c) => c.skillIds.length > 0), 'support cards with hint skills')
   assert(skillsOut.some((s) => s.tier === 'gold' && s.factorId !== null), 'gold skills linked to spark factors')
   const cornerAdept = skillsOut.find((s) => s.id === 200332)
   assert(cornerAdept && cornerAdept.factorId === 20033, 'skill→factor linkage (Corner Adept ○ → factor 20033)')
@@ -291,6 +305,7 @@ async function main() {
   await write('races.json', races)
   await write('unique-skills.json', uniqueSkills)
   await write('skills.json', skillsOut)
+  await write('support-cards.json', supportsOut)
   await write('relations.json', relations)
   await write('race-plan.json', racePlan)
   await write('meta.json', {

@@ -26,7 +26,7 @@ const TOOLS: { key: ToolKey; label: string; render: () => ReactNode }[] = [
   { key: 'chances', label: 'Chances', render: () => <RatePanel data={data} /> },
   { key: 'wishlist', label: 'Wishlist', render: () => <WishlistPanel data={data} /> },
   { key: 'recommend', label: 'Recommend', render: () => <RecommendPanel data={data} /> },
-  { key: 'optimizer', label: 'Optimizer', render: () => <OptimizerPanel data={data} /> },
+  { key: 'optimizer', label: 'Planner', render: () => <OptimizerPanel data={data} /> },
   { key: 'farming', label: 'Farming', render: () => <FarmingPanel data={data} /> },
   { key: 'races', label: 'Races', render: () => <RacePlannerPanel data={data} /> },
   { key: 'library', label: 'Library', render: () => <LibraryView data={data} /> },

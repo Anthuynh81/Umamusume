@@ -60,6 +60,7 @@ export interface UmaExtractorRecord {
   /** Current exports: {factor_id, level} objects. */
   factor_info_array?: FactorInfo[]
   skill_array?: { skill_id: number; level: number }[]
+  support_card_list?: { support_card_id: number; limit_break_count?: number }[]
   win_saddle_id_array?: number[]
   rank_score?: number
   fans?: number
@@ -85,6 +86,11 @@ export interface ImportResult {
   umas: ImportedUma[]
   /** Distinct pedigree ancestors, deduplicated and not among `umas`. */
   ancestors: ImportedUma[]
+  /**
+   * Support cards seen across the veterans' runs (a practical ownership
+   * proxy) with the highest limit-break observed.
+   */
+  supportCards: { id: number; limitBreak: number }[]
   skipped: number
   warnings: string[]
 }
@@ -291,5 +297,16 @@ export function importUmaExtractor(raw: unknown, data: GameData): ImportResult {
     )
   }
 
-  return { umas, ancestors, skipped, warnings }
+  const supportMax = new Map<number, number>()
+  for (const record of records) {
+    for (const sc of record.support_card_list ?? []) {
+      if (typeof sc.support_card_id !== 'number') continue
+      supportMax.set(sc.support_card_id, Math.max(supportMax.get(sc.support_card_id) ?? 0, sc.limit_break_count ?? 0))
+    }
+  }
+  const supportCards = [...supportMax.entries()]
+    .map(([id, limitBreak]) => ({ id, limitBreak }))
+    .sort((a, b) => a.id - b.id)
+
+  return { umas, ancestors, supportCards, skipped, warnings }
 }

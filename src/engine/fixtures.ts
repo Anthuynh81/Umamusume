@@ -82,6 +82,10 @@ export function fixtureData(): GameData {
       { id: 2003423, name: 'Groundwork ◎', tier: 'circle', factorId: 200342 },
       { id: 9101, name: 'Unique One', tier: 'unique', factorId: null },
     ],
+    supportCards: [
+      { id: 30001, name: 'Kind Teacher Bravo Heart', rarity: 3, type: 'wisdom', skillIds: [2003422], global: true },
+      { id: 30002, name: 'Idle Friend Echo Flash', rarity: 2, type: 'speed', skillIds: [9101], global: true },
+    ],
     relations: new StubRelations(
       { '1:2': 100, '1:3': 60, '1:4': 20, '1:5': 10, '2:3': 40, '2:4': 25, '2:5': 30, '3:4': 15, '3:5': 55, '4:5': 5 },
       { '1:2:4': 12, '1:3:5': 8 },

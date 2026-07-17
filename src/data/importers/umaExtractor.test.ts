@@ -103,6 +103,20 @@ describe('importUmaExtractor', () => {
     expect(warnings).toEqual([])
   })
 
+  it('aggregates owned support cards with max limit break', () => {
+    const result = importUmaExtractor(
+      [
+        record({ support_card_list: [{ support_card_id: 30001, limit_break_count: 2 }] }),
+        record({ trained_chara_id: 204, support_card_list: [{ support_card_id: 30001, limit_break_count: 4 }, { support_card_id: 30002 }] }),
+      ],
+      data,
+    )
+    expect(result.supportCards).toEqual([
+      { id: 30001, limitBreak: 4 },
+      { id: 30002, limitBreak: 0 },
+    ])
+  })
+
   it('trips the format alarm when no record decodes any spark', () => {
     const result = importUmaExtractor([record({ factor_id_array: [], skill_array: [] })], data)
     expect(result.warnings.some((w) => w.includes('format may have changed'))).toBe(true)

@@ -44,6 +44,7 @@ const LS_TREE = 'sparkline.tree.v1'
 const LS_SETTINGS = 'sparkline.settings.v1'
 const LS_OWNED = 'sparkline.owned.v1'
 const LS_WISHLIST = 'sparkline.wishlist.v1'
+const LS_SUPPORTS = 'sparkline.supports.v1'
 
 function loadJson<T>(key: string): T | null {
   try {
@@ -81,9 +82,12 @@ interface TreeStore {
   wishlist: string[]
   /** Race-planner character pool (shared so other tools can hand off to it). */
   racePool: number[]
+  /** Owned support cards (id → max limit break), from UmaExtractor imports. */
+  ownedSupports: Record<string, number>
 
   setSlot(index: number, build: UmaBuild | null): void
   setRacePool(pool: number[]): void
+  setOwnedSupports(cards: { id: number; limitBreak: number }[]): void
   updateSlot(index: number, patch: Partial<UmaBuild>): void
   copySlot(from: number, to: number): void
   swapSlots(a: number, b: number): void
@@ -105,6 +109,7 @@ export const useTreeStore = create<TreeStore>((set) => ({
   ownedChars: loadJson<number[]>(LS_OWNED) ?? [],
   wishlist: loadJson<string[]>(LS_WISHLIST) ?? [],
   racePool: [],
+  ownedSupports: loadJson<Record<string, number>>(LS_SUPPORTS) ?? {},
 
   setSlot: (index, build) =>
     set((s) => {
@@ -161,6 +166,13 @@ export const useTreeStore = create<TreeStore>((set) => ({
 
   setRacePool: (pool) => set({ racePool: [...new Set(pool)] }),
 
+  setOwnedSupports: (cards) =>
+    set((s) => {
+      const merged = { ...s.ownedSupports }
+      for (const c of cards) merged[c.id] = Math.max(merged[c.id] ?? 0, c.limitBreak)
+      return { ownedSupports: merged }
+    }),
+
   toggleWishlist: (key) =>
     set((s) => ({
       wishlist: s.wishlist.includes(key)
@@ -178,4 +190,5 @@ useTreeStore.subscribe((state, prev) => {
   if (state.settings !== prev.settings) saveJson(LS_SETTINGS, state.settings)
   if (state.ownedChars !== prev.ownedChars) saveJson(LS_OWNED, state.ownedChars)
   if (state.wishlist !== prev.wishlist) saveJson(LS_WISHLIST, state.wishlist)
+  if (state.ownedSupports !== prev.ownedSupports) saveJson(LS_SUPPORTS, state.ownedSupports)
 })

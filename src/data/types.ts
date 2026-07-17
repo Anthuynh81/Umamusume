@@ -87,6 +87,17 @@ export interface SkillDef {
   factorId: number | null
 }
 
+/** Support card: which skills a card can teach during a training run. */
+export interface SupportCardDef {
+  id: number
+  name: string
+  rarity: number
+  type: string | null
+  /** Hint + event skill ids. */
+  skillIds: number[]
+  global: boolean
+}
+
 /**
  * Base-affinity backend. The primary implementation derives points from the
  * Global succession_relation tables; a manual-entry fallback lets the tool
@@ -106,6 +117,7 @@ export interface GameDataInput {
   races: RaceDef[]
   uniqueSkills: UniqueSkillDef[]
   skills: SkillDef[]
+  supportCards: SupportCardDef[]
   relations: RelationBackend
 }
 
@@ -116,6 +128,7 @@ export class GameData {
   readonly races: RaceDef[]
   readonly uniqueSkills: UniqueSkillDef[]
   readonly skills: SkillDef[]
+  readonly supportCards: SupportCardDef[]
   readonly relations: RelationBackend
 
   private charaById: Map<number, CharacterDef>
@@ -132,6 +145,7 @@ export class GameData {
     this.races = input.races
     this.uniqueSkills = input.uniqueSkills
     this.skills = input.skills
+    this.supportCards = input.supportCards
     this.relations = input.relations
     this.charaById = new Map(this.characters.map((c) => [c.id, c]))
     this.variantById = new Map(this.variants.map((v) => [v.id, v]))
