@@ -8,6 +8,12 @@ import { APTITUDE_LABELS, BLUE_STAT_LABELS } from '../model/types'
 import { clearLibrary, deleteLibraryUma, listLibrary, saveUmaToLibrary } from '../store/persist'
 import { useTreeStore } from '../store/tree'
 import { Avatar } from './avatar/Avatar'
+import { useMemo } from 'react'
+import { APTITUDE_KEYS, BLUE_STATS } from '../model/types'
+import type { AptitudeKey, BlueStat, Stars } from '../model/types'
+
+type SourceFilter = 'all' | 'mine' | 'ancestors'
+type SortKey = 'newest' | 'name' | 'score' | 'sparks'
 
 /**
  * The uma library: trained umas saved for reuse. "Copy to tree" puts the uma
@@ -19,6 +25,12 @@ export function LibraryView({ data }: { data: GameData }) {
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<number | null>(null)
   const [importNote, setImportNote] = useState<string | null>(null)
+  const [blueFilter, setBlueFilter] = useState<BlueStat | ''>('')
+  const [blueMin, setBlueMin] = useState<Stars>(1)
+  const [pinkFilter, setPinkFilter] = useState<AptitudeKey | ''>('')
+  const [pinkMin, setPinkMin] = useState<Stars>(1)
+  const [source, setSource] = useState<SourceFilter>('all')
+  const [sort, setSort] = useState<SortKey>('newest')
   const importRef = useRef<HTMLInputElement>(null)
   const setClipboard = useTreeStore((s) => s.setClipboard)
   const tree = useTreeStore((s) => s.tree)
@@ -28,7 +40,33 @@ export function LibraryView({ data }: { data: GameData }) {
   }, [])
   useEffect(refresh, [refresh, tree]) // refresh when tree changes (saves from the editor)
 
-  const shown = umas.filter((u) => !query || u.name.toLowerCase().includes(query.toLowerCase()))
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const sparkCount = (u: LibraryUma) =>
+      (u.build.blue ? 1 : 0) + (u.build.pink ? 1 : 0) + (u.build.green ? 1 : 0) + u.build.whites.length
+    const filtered = umas.filter((u) => {
+      // Text: uma name OR any white-spark name.
+      if (
+        q &&
+        !u.name.toLowerCase().includes(q) &&
+        !u.build.whites.some((w) => (data.spark(w.refId)?.name ?? '').toLowerCase().includes(q))
+      ) {
+        return false
+      }
+      if (blueFilter && !(u.build.blue?.stat === blueFilter && u.build.blue.stars >= blueMin)) return false
+      if (pinkFilter && !(u.build.pink?.aptitude === pinkFilter && u.build.pink.stars >= pinkMin)) return false
+      const isAncestor = u.tags.includes('ancestor')
+      if (source === 'mine' && isAncestor) return false
+      if (source === 'ancestors' && !isAncestor) return false
+      return true
+    })
+    const sorted = [...filtered]
+    if (sort === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name))
+    else if (sort === 'score') sorted.sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
+    else if (sort === 'sparks') sorted.sort((a, b) => sparkCount(b) - sparkCount(a))
+    // 'newest' keeps listLibrary's updatedAt-desc order.
+    return sorted
+  }, [umas, query, blueFilter, blueMin, pinkFilter, pinkMin, source, sort, data])
 
   return (
     <section aria-label="Uma library" className="rounded-lg border border-slate-200 bg-white p-3">
@@ -110,10 +148,62 @@ export function LibraryView({ data }: { data: GameData }) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search library…"
+            placeholder="Search by name or white spark (e.g. Groundwork)…"
             aria-label="Search library"
             className="mt-2 w-full rounded-md border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
           />
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+            <label className="flex items-center gap-1">
+              Blue
+              <select value={blueFilter} onChange={(e) => setBlueFilter(e.target.value as BlueStat | '')} aria-label="Filter by blue spark" className="rounded border border-slate-300 px-1 py-0.5">
+                <option value="">any</option>
+                {BLUE_STATS.map((s) => (
+                  <option key={s} value={s}>{BLUE_STAT_LABELS[s]}</option>
+                ))}
+              </select>
+              {blueFilter && (
+                <select value={blueMin} onChange={(e) => setBlueMin(Number(e.target.value) as Stars)} aria-label="Minimum blue stars" className="rounded border border-slate-300 px-1 py-0.5">
+                  {[1, 2, 3].map((n) => (
+                    <option key={n} value={n}>{'★'.repeat(n)}+</option>
+                  ))}
+                </select>
+              )}
+            </label>
+            <label className="flex items-center gap-1">
+              Pink
+              <select value={pinkFilter} onChange={(e) => setPinkFilter(e.target.value as AptitudeKey | '')} aria-label="Filter by pink spark" className="rounded border border-slate-300 px-1 py-0.5">
+                <option value="">any</option>
+                {APTITUDE_KEYS.map((k) => (
+                  <option key={k} value={k}>{APTITUDE_LABELS[k]}</option>
+                ))}
+              </select>
+              {pinkFilter && (
+                <select value={pinkMin} onChange={(e) => setPinkMin(Number(e.target.value) as Stars)} aria-label="Minimum pink stars" className="rounded border border-slate-300 px-1 py-0.5">
+                  {[1, 2, 3].map((n) => (
+                    <option key={n} value={n}>{'★'.repeat(n)}+</option>
+                  ))}
+                </select>
+              )}
+            </label>
+            <label className="flex items-center gap-1">
+              Show
+              <select value={source} onChange={(e) => setSource(e.target.value as SourceFilter)} aria-label="Filter by source" className="rounded border border-slate-300 px-1 py-0.5">
+                <option value="all">all</option>
+                <option value="mine">my umas</option>
+                <option value="ancestors">ancestors</option>
+              </select>
+            </label>
+            <label className="ml-auto flex items-center gap-1">
+              Sort
+              <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort library" className="rounded border border-slate-300 px-1 py-0.5">
+                <option value="newest">newest</option>
+                <option value="name">name</option>
+                <option value="score">score</option>
+                <option value="sparks">most sparks</option>
+              </select>
+            </label>
+            <span className="tabular-nums text-slate-400">{shown.length}/{umas.length}</span>
+          </div>
           <ul className="mt-1 max-h-72 divide-y divide-slate-100 overflow-y-auto">
             {shown.map((u) => {
               const variant = data.variant(u.build.variantId)
