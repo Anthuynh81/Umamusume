@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { importUmaExtractor } from '../data/importers/umaExtractor'
 import type { GameData } from '../data/types'
 import { stars as starStr, formatDate } from '../lib/format'
+import { heldSkillsOf } from '../lib/skills'
 import type { LibraryUma } from '../model/library'
 import { APTITUDE_LABELS, BLUE_STAT_LABELS } from '../model/types'
-import { deleteLibraryUma, listLibrary, saveUmaToLibrary } from '../store/persist'
+import { clearLibrary, deleteLibraryUma, listLibrary, saveUmaToLibrary } from '../store/persist'
 import { useTreeStore } from '../store/tree'
 import { Avatar } from './avatar/Avatar'
 
@@ -16,6 +17,7 @@ import { Avatar } from './avatar/Avatar'
 export function LibraryView({ data }: { data: GameData }) {
   const [umas, setUmas] = useState<LibraryUma[]>([])
   const [query, setQuery] = useState('')
+  const [expanded, setExpanded] = useState<number | null>(null)
   const [importNote, setImportNote] = useState<string | null>(null)
   const importRef = useRef<HTMLInputElement>(null)
   const setClipboard = useTreeStore((s) => s.setClipboard)
@@ -41,6 +43,23 @@ export function LibraryView({ data }: { data: GameData }) {
         >
           Import UmaExtractor
         </button>
+        {umas.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm(`Delete ALL ${umas.length} umas from the library? This cannot be undone (blueprints are untouched).`)) {
+                void clearLibrary().then(() => {
+                  setImportNote('Library cleared.')
+                  refresh()
+                })
+              }
+            }}
+            title="Delete every saved uma (e.g. before a fresh UmaExtractor import)"
+            className="rounded border border-red-200 px-2 py-0.5 text-[11px] text-red-600 hover:bg-red-50"
+          >
+            Clear all
+          </button>
+        )}
         <input
           ref={importRef}
           type="file"
@@ -95,15 +114,29 @@ export function LibraryView({ data }: { data: GameData }) {
             {shown.map((u) => {
               const variant = data.variant(u.build.variantId)
               const chara = variant ? data.character(variant.charaId) : undefined
+              const held = heldSkillsOf(u)
               return (
-                <li key={u.id} className="flex items-center gap-2 py-1.5">
+                <li key={u.id} className="py-1.5">
+                  <div className="flex items-center gap-2">
                   <Avatar chara={chara} size={28} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-xs font-medium">{u.name}</div>
                     <div className="truncate text-[10px] text-slate-400">
                       {u.build.blue && `${BLUE_STAT_LABELS[u.build.blue.stat]} ${starStr(u.build.blue.stars)} · `}
                       {u.build.pink && `${APTITUDE_LABELS[u.build.pink.aptitude]} ${starStr(u.build.pink.stars)} · `}
-                      {u.build.whites.length} whites · {formatDate(u.updatedAt)}
+                      {u.build.whites.length} whites
+                      {held.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setExpanded(expanded === u.id ? null : (u.id ?? null))}
+                          aria-expanded={expanded === u.id}
+                          className="ml-1 text-indigo-500 hover:underline"
+                        >
+                          {expanded === u.id ? '▾' : '▸'} {held.length} skills
+                        </button>
+                      )}
+                      {' · '}
+                      {formatDate(u.updatedAt)}
                     </div>
                   </div>
                   <button
@@ -126,6 +159,25 @@ export function LibraryView({ data }: { data: GameData }) {
                   >
                     ✕
                   </button>
+                  </div>
+                  {expanded === u.id && held.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1 pl-9">
+                      {held.map((h) => {
+                        const skill = data.skill(h.id)
+                        const cls =
+                          skill?.tier === 'gold' ? 'bg-amber-100 text-amber-800'
+                          : skill?.tier === 'circle' ? 'bg-sky-100 text-sky-800'
+                          : skill?.tier === 'unique' ? 'bg-violet-100 text-violet-800'
+                          : 'bg-slate-100 text-slate-600'
+                        return (
+                          <span key={h.id} className={`rounded px-1.5 py-0.5 text-[10px] ${cls}`}>
+                            {skill?.name ?? `#${h.id}`}
+                            {h.level > 1 && <span className="ml-0.5 opacity-70">Lv{h.level}</span>}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
                 </li>
               )
             })}

@@ -10,6 +10,7 @@
  *  - race id       = race id (1001 = February Stakes), used in wonRaces
  */
 import type { Aptitudes, WhiteKind } from '../model/types'
+import type { WhiteTier } from './config/rates'
 
 export interface CharacterDef {
   id: number
@@ -75,6 +76,18 @@ export interface UniqueSkillDef {
 }
 
 /**
+ * Full skill table (every learnable skill, all versions). `tier` is the
+ * version this id represents; `factorId` links the skill's group to its
+ * white-spark factor (null for skills that never spark, e.g. uniques).
+ */
+export interface SkillDef {
+  id: number
+  name: string
+  tier: WhiteTier | 'unique' | 'other'
+  factorId: number | null
+}
+
+/**
  * Base-affinity backend. The primary implementation derives points from the
  * Global succession_relation tables; a manual-entry fallback lets the tool
  * work without that data (brief: never block the tree builder on affinity).
@@ -92,6 +105,7 @@ export interface GameDataInput {
   sparks: SparkDef[]
   races: RaceDef[]
   uniqueSkills: UniqueSkillDef[]
+  skills: SkillDef[]
   relations: RelationBackend
 }
 
@@ -101,6 +115,7 @@ export class GameData {
   readonly sparks: SparkDef[]
   readonly races: RaceDef[]
   readonly uniqueSkills: UniqueSkillDef[]
+  readonly skills: SkillDef[]
   readonly relations: RelationBackend
 
   private charaById: Map<number, CharacterDef>
@@ -108,6 +123,7 @@ export class GameData {
   private sparkById: Map<number, SparkDef>
   private raceById: Map<number, RaceDef>
   private uniqueById: Map<number, UniqueSkillDef>
+  private skillById: Map<number, SkillDef>
 
   constructor(input: GameDataInput) {
     this.characters = input.characters
@@ -115,12 +131,18 @@ export class GameData {
     this.sparks = input.sparks
     this.races = input.races
     this.uniqueSkills = input.uniqueSkills
+    this.skills = input.skills
     this.relations = input.relations
     this.charaById = new Map(this.characters.map((c) => [c.id, c]))
     this.variantById = new Map(this.variants.map((v) => [v.id, v]))
     this.sparkById = new Map(this.sparks.map((s) => [s.id, s]))
     this.raceById = new Map(this.races.map((r) => [r.id, r]))
     this.uniqueById = new Map(this.uniqueSkills.map((u) => [u.id, u]))
+    this.skillById = new Map(this.skills.map((s) => [s.id, s]))
+  }
+
+  skill(id: number): SkillDef | undefined {
+    return this.skillById.get(id)
   }
 
   character(id: number): CharacterDef | undefined {

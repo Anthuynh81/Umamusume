@@ -180,6 +180,7 @@ function importRecord(record: UmaExtractorRecord, data: GameData): ImportedUma |
       score: record.rank_score ?? null,
       rank: null,
       skillIds: (record.skill_array ?? []).map((s) => s.skill_id),
+      heldSkills: (record.skill_array ?? []).map((s) => ({ id: s.skill_id, level: s.level ?? 1 })),
       trainedAt: record.create_time ? record.create_time.replace(' ', 'T') : null,
       tags: ['umaextractor'],
       owned: true,

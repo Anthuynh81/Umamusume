@@ -164,6 +164,29 @@ async function main() {
     .map((r) => ({ id: r.id, name: r.name_en, grade: r.grade, global: true }))
     .sort((a, b) => a.grade - b.grade || a.id - b.id)
 
+  // --- full skill table (names, tier, spark-group linkage) ------------------
+  // A spark factor grants the ○/white version of its skill group; every
+  // variant (○ / ◎ / gold) shares floor(skillId/10) with the granted skill,
+  // which is how a HELD skill maps back to its spark factor and how the
+  // farming calculator knows which generation tier applies.
+  const factorBySkillGroup = new Map()
+  for (const f of factorsRaw.skill) {
+    const granted = grantedSkillId(f)
+    if (granted != null) factorBySkillGroup.set(Math.floor(granted / 10), Number(f.id))
+  }
+  const skillsOut = skillsRaw
+    .map((s) => {
+      const loc = locById.get(s.id)
+      const name = String(loc?.name_en_global || loc?.name_en || s.name_en || s.enname || `Skill ${s.id}`)
+      const tier =
+        s.rarity === 2 ? 'gold'
+        : s.rarity === 1 ? (name.includes('◎') ? 'circle' : 'normal')
+        : s.rarity >= 3 && s.rarity <= 5 ? 'unique'
+        : 'other' // evolved etc.
+      return { id: s.id, name, tier, factorId: factorBySkillGroup.get(Math.floor(s.id / 10)) ?? null }
+    })
+    .sort((a, b) => a.id - b.id)
+
   // --- unique skills (green spark labels) -----------------------------------
   const uniqueIds = [...new Set(variants.map((v) => v.uniqueSkillId).filter((x) => x != null))]
   const uniqueSkills = uniqueIds
@@ -251,6 +274,10 @@ async function main() {
     return (members[b] ?? []).filter((t) => sa.has(t)).reduce((s, t) => s + points[t], 0)
   }
   assert(pairPoints(1001, 1002) > 0, 'relation points computable (1001×1002)')
+  assert(skillsOut.length >= 1500, 'full skill table')
+  assert(skillsOut.some((s) => s.tier === 'gold' && s.factorId !== null), 'gold skills linked to spark factors')
+  const cornerAdept = skillsOut.find((s) => s.id === 200332)
+  assert(cornerAdept && cornerAdept.factorId === 20033, 'skill→factor linkage (Corner Adept ○ → factor 20033)')
 
   // --- write -----------------------------------------------------------------
   await mkdir(OUT_DIR, { recursive: true })
@@ -263,6 +290,7 @@ async function main() {
   await write('sparks.json', sparks)
   await write('races.json', races)
   await write('unique-skills.json', uniqueSkills)
+  await write('skills.json', skillsOut)
   await write('relations.json', relations)
   await write('race-plan.json', racePlan)
   await write('meta.json', {

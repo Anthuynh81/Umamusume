@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { CopyBonusStrategy, WhiteTier } from '../../data/config/rates'
 import type { GameData } from '../../data/types'
 import {
@@ -6,12 +6,17 @@ import {
 } from '../../engine/generation'
 import type { WhiteTargetSpec } from '../../engine/generation'
 import { pct } from '../../lib/format'
+import { bestHeldTier, heldSkillsOf } from '../../lib/skills'
+import type { LibraryUma } from '../../model/library'
+import { listLibrary } from '../../store/persist'
 import { APTITUDE_KEYS, APTITUDE_LABELS, BLUE_STATS, BLUE_STAT_LABELS } from '../../model/types'
 import type { Stars } from '../../model/types'
 
 interface WhiteRow extends WhiteTargetSpec {
   sparkId: number | null
   query: string
+  /** Set by tier-from-library: she holds no version of this skill group. */
+  notHeld?: boolean
 }
 
 const TIER_LABELS: Record<WhiteTier, string> = {
@@ -53,6 +58,27 @@ export function FarmingPanel({ data }: { data: GameData }) {
   const [strategy] = useState<CopyBonusStrategy>('multiplicative')
   const [reroll, setReroll] = useState(true)
   const [whites, setWhites] = useState<WhiteRow[]>([])
+  const [umas, setUmas] = useState<LibraryUma[]>([])
+  const [tierFrom, setTierFrom] = useState('')
+
+  useEffect(() => {
+    void listLibrary().then(setUmas)
+  }, [])
+
+  /** Set each skill target's tier from what the chosen library uma holds. */
+  const applyTiersFrom = (umaId: string) => {
+    setTierFrom(umaId)
+    const uma = umas.find((u) => String(u.id) === umaId)
+    if (!uma) return
+    const held = heldSkillsOf(uma)
+    setWhites((ws) =>
+      ws.map((w) => {
+        if (w.sparkId === null || data.spark(w.sparkId)?.kind !== 'skill') return w
+        const tier = bestHeldTier(held, w.sparkId, data)
+        return tier ? { ...w, tier, notHeld: false } : { ...w, tier: 'normal', notHeld: true }
+      }),
+    )
+  }
 
   const perDraw = useMemo(
     () =>
@@ -170,6 +196,14 @@ export function FarmingPanel({ data }: { data: GameData }) {
                 <option key={t} value={t}>{TIER_LABELS[t]}</option>
               ))}
             </select>
+            {w.notHeld && (
+              <span
+                className="rounded bg-red-100 px-1 text-[10px] text-red-700"
+                title="The selected library uma holds no version of this skill — it cannot generate for her"
+              >
+                not learned
+              </span>
+            )}
             <StarsSelect
               value={w.minStars}
               onChange={(s) => setWhites(whites.map((x, j) => (j === i ? { ...x, minStars: s } : x)))}
@@ -194,13 +228,31 @@ export function FarmingPanel({ data }: { data: GameData }) {
             </button>
           </div>
         ))}
-        <button
-          type="button"
-          onClick={() => setWhites([...whites, { sparkId: null, query: '', tier: 'normal', lineageCopies: 0, minStars: 2, rating }])}
-          className="rounded border border-dashed border-slate-300 px-2 py-0.5 text-slate-500 hover:border-indigo-400"
-        >
-          + white spark target
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setWhites([...whites, { sparkId: null, query: '', tier: 'normal', lineageCopies: 0, minStars: 2, rating }])}
+            className="rounded border border-dashed border-slate-300 px-2 py-0.5 text-slate-500 hover:border-indigo-400"
+          >
+            + white spark target
+          </button>
+          {umas.length > 0 && whites.length > 0 && (
+            <label className="flex items-center gap-1 text-slate-500" title="Set each skill target's tier (white/◎/gold) from what a saved uma actually holds">
+              tier from
+              <select
+                value={tierFrom}
+                onChange={(e) => applyTiersFrom(e.target.value)}
+                aria-label="Set tiers from library uma"
+                className="max-w-40 rounded border border-slate-300 px-1 py-0.5"
+              >
+                <option value="">—</option>
+                {umas.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-2">
           <label className="flex items-center gap-1 text-slate-500" title="Final career rating — star odds jump at 17,500 (SS)">

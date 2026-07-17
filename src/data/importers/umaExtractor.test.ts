@@ -56,6 +56,7 @@ describe('importUmaExtractor', () => {
     expect(entry.name).toContain('Special Week')
     expect(entry.score).toBe(12345)
     expect(entry.skillIds).toEqual([200332])
+    expect(entry.heldSkills).toEqual([{ id: 200332, level: 1 }])
     expect(entry.trainedAt).toBe('2025-07-05T18:27:57')
     expect(entry.owned).toBe(true)
     expect(entry.tags).toContain('umaextractor')

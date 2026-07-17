@@ -44,6 +44,10 @@ export async function deleteLibraryUma(id: number): Promise<void> {
   await db.library.delete(id)
 }
 
+export async function clearLibrary(): Promise<void> {
+  await db.library.clear()
+}
+
 export async function listLibrary(): Promise<LibraryUma[]> {
   return db.library.orderBy('updatedAt').reverse().toArray()
 }

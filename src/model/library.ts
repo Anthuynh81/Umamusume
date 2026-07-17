@@ -18,6 +18,8 @@ export interface LibraryUma {
   rank: string | null
   /** Skill ids the uma holds (context for planning; whites capture sparks). */
   skillIds: number[]
+  /** Held skills with levels (newer imports; skillIds kept for old entries). */
+  heldSkills?: { id: number; level: number }[]
   /** ISO date the career finished. */
   trainedAt: string | null
   /** Custom text/emoji tags for filtering. */
