@@ -14,6 +14,7 @@ export function TreeView({ data }: { data: GameData }) {
   const horizontal = useTreeStore((s) => s.settings.horizontal)
   const raceBonusRule = useTreeStore((s) => s.settings.raceBonusRule)
   const setSetting = useTreeStore((s) => s.setSetting)
+  const resetTree = useTreeStore((s) => s.resetTree)
 
   const breakdown = useMemo(
     () => affinityBreakdown(tree, 0, data, { raceBonusRule }),
@@ -62,6 +63,16 @@ export function TreeView({ data }: { data: GameData }) {
           })()}
         </h2>
         <div className="ml-auto flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Clear the whole tree? (Saved blueprints are untouched.)')) resetTree()
+            }}
+            title="Clear every slot and start fresh"
+            className="rounded border border-red-200 px-2 py-0.5 text-red-600 hover:bg-red-50"
+          >
+            Clear
+          </button>
           <span className="flex items-center gap-1" role="group" aria-label="Export as image">
             <button
               type="button"
