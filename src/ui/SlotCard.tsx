@@ -57,7 +57,7 @@ export function SlotCard({
           copySlot(from, index)
         }
       }}
-      className={`group relative flex min-w-0 flex-col rounded-lg border bg-white p-2 text-left shadow-sm transition-colors ${
+      className={`group relative flex w-36 shrink-0 flex-col rounded-lg border bg-white p-2 text-left shadow-sm transition-colors sm:w-44 sm:p-2.5 ${
         warning ? 'border-red-400' : 'border-slate-200 hover:border-indigo-400'
       }`}
     >
@@ -81,12 +81,14 @@ export function SlotCard({
         aria-label={`Edit ${slotLabel(index)}${chara ? `: ${chara.name}` : ' (empty)'}`}
         className="flex min-w-0 items-start gap-2 text-left"
       >
-        <Avatar chara={chara} size={34} />
+        <Avatar chara={chara} size={40} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[11px] font-medium text-slate-400">{slotLabel(index)}</span>
+          <span className="block truncate text-[10px] font-medium uppercase tracking-wide text-slate-400">
+            {slotLabel(index)}
+          </span>
           {chara ? (
             <>
-              <span className="block truncate text-xs font-semibold text-slate-800">{chara.name}</span>
+              <span className="block truncate text-[13px] font-semibold leading-tight text-slate-800">{chara.name}</span>
               {variant?.title && <span className="block truncate text-[10px] text-slate-400">{variant.title}</span>}
             </>
           ) : (

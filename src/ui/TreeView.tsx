@@ -3,12 +3,10 @@ import type { GameData } from '../data/types'
 import { affinityBreakdown, lineageErrors } from '../engine/affinity'
 import { TIER_SYMBOLS } from '../engine/affinity'
 import { downloadBlob, exportTreePng } from '../export/treeImage'
-import { generationSlots } from '../model/tree'
+import { generationOf } from '../model/tree'
 import { treeProgress } from '../model/progress'
 import { useTreeStore } from '../store/tree'
 import { SlotCard } from './SlotCard'
-
-const GEN_LABELS = ['Trainee', 'Parents', 'Grandparents', 'Gen 3 (planning)', 'Gen 4 (planning)']
 
 export function TreeView({ data }: { data: GameData }) {
   const tree = useTreeStore((s) => s.tree)
@@ -24,8 +22,6 @@ export function TreeView({ data }: { data: GameData }) {
   const errors = useMemo(() => lineageErrors(tree, 0, data), [tree, data])
   const warningFor = (i: number) =>
     errors.find((e) => e.slots.includes(i))?.message
-
-  const generations = Array.from({ length: depth + 1 }, (_, g) => generationSlots(g))
 
   const [exporting, setExporting] = useState(false)
   const exportPng = async (scope: 'active' | 'full') => {
@@ -117,34 +113,63 @@ export function TreeView({ data }: { data: GameData }) {
         </div>
       )}
 
-      <div className={horizontal ? 'flex gap-3 overflow-x-auto pb-2' : 'flex flex-col gap-3'}>
-        {generations.map((slots, gen) => (
-          <div key={gen} className={horizontal ? 'flex min-w-40 shrink-0 flex-col justify-around gap-2' : ''}>
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              {GEN_LABELS[gen]}
-            </div>
-            <div
-              className={horizontal ? 'flex flex-col gap-2' : 'grid gap-2 overflow-x-auto pb-1'}
-              style={
-                horizontal
-                  ? undefined
-                  : { gridTemplateColumns: `repeat(${slots.length}, minmax(${slots.length > 4 ? '8.5rem' : '0'}, 1fr))` }
-              }
-            >
-              {slots.map((i) => (
-                <SlotCard
-                  key={i}
-                  index={i}
-                  build={tree.slots[i] ?? null}
-                  data={data}
-                  affinity={i >= 1 && i <= 6 ? (breakdown.perSlot[i] ?? null) : null}
-                  warning={warningFor(i)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className={`overflow-x-auto pb-2 ${horizontal ? 'ftree-h' : ''}`}>
+        <div className={`flex min-w-max px-1 ${horizontal ? '' : 'justify-center'}`}>
+          <TreeNode
+            index={0}
+            maxGen={depth}
+            tree={tree}
+            data={data}
+            breakdown={breakdown}
+            warningFor={warningFor}
+          />
+        </div>
       </div>
     </section>
+  )
+}
+
+function TreeNode({
+  index,
+  maxGen,
+  tree,
+  data,
+  breakdown,
+  warningFor,
+}: {
+  index: number
+  maxGen: number
+  tree: ReturnType<typeof useTreeStore.getState>['tree']
+  data: GameData
+  breakdown: ReturnType<typeof affinityBreakdown>
+  warningFor: (i: number) => string | undefined
+}) {
+  const gen = generationOf(index)
+  return (
+    <div className="ftree-node">
+      <SlotCard
+        index={index}
+        build={tree.slots[index] ?? null}
+        data={data}
+        affinity={index >= 1 && index <= 6 ? (breakdown.perSlot[index] ?? null) : null}
+        warning={warningFor(index)}
+      />
+      {gen < maxGen && (
+        <div className="ftree-kids">
+          {[2 * index + 1, 2 * index + 2].map((parent) => (
+            <div key={parent} className="ftree-kid">
+              <TreeNode
+                index={parent}
+                maxGen={maxGen}
+                tree={tree}
+                data={data}
+                breakdown={breakdown}
+                warningFor={warningFor}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

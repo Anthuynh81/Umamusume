@@ -4,6 +4,117 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
+ * Family-tree connector lines (elbow style, like the JP planner).
+ * Vertical: child card on top, its two legacies below. The .ftree-kids zone
+ * carries the stub down from the child; each .ftree-kid draws the half-width
+ * horizontal plus its own stub down to the card. Line color rides the slate
+ * palette so the dark flip applies.
+ */
+@layer components {
+  .ftree-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .ftree-kids {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 18px;
+  }
+  .ftree-kids::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-1px);
+    height: 18px;
+    border-left: 2px solid var(--color-slate-300);
+  }
+  .ftree-kid {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 18px 6px 0;
+  }
+  .ftree-kid::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    border-top: 2px solid var(--color-slate-300);
+  }
+  .ftree-kid:first-child::before {
+    left: 50%;
+    right: 0;
+  }
+  .ftree-kid:last-child::before {
+    left: 0;
+    right: 50%;
+  }
+  .ftree-kid::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-1px);
+    height: 18px;
+    border-left: 2px solid var(--color-slate-300);
+  }
+
+  /* Horizontal orientation: trainee on the left, ancestors rightward. */
+  .ftree-h .ftree-node {
+    flex-direction: row;
+    align-items: center;
+  }
+  .ftree-h .ftree-kids {
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 0;
+    padding-left: 18px;
+  }
+  .ftree-h .ftree-kids::before {
+    top: 50%;
+    left: 0;
+    transform: translateY(-1px);
+    height: 0;
+    width: 18px;
+    border-left: none;
+    border-top: 2px solid var(--color-slate-300);
+  }
+  .ftree-h .ftree-kid {
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 0 6px 18px;
+  }
+  .ftree-h .ftree-kid::before {
+    border-top: none;
+    border-left: 2px solid var(--color-slate-300);
+    left: 0;
+    width: 0;
+  }
+  .ftree-h .ftree-kid:first-child::before {
+    top: 50%;
+    bottom: 0;
+    right: auto;
+  }
+  .ftree-h .ftree-kid:last-child::before {
+    top: 0;
+    bottom: 50%;
+    right: auto;
+  }
+  .ftree-h .ftree-kid::after {
+    top: 50%;
+    left: 0;
+    transform: translateY(-1px);
+    height: 0;
+    width: 18px;
+    border-left: none;
+    border-top: 2px solid var(--color-slate-300);
+  }
+}
+
+/*
  * Dark theme via palette inversion.
  *
  * Tailwind v4 utilities resolve colors through CSS variables, so instead of
