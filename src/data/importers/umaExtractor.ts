@@ -38,9 +38,16 @@ const PINK_PREFIX: Readonly<Record<number, AptitudeKey>> = {
 
 const WIN_SADDLES = winSaddlesJson as Record<string, number[]>
 
+/** Newer client exports wrap factor ids in objects (level is unused). */
+export interface FactorInfo {
+  factor_id: number
+  level?: number
+}
+
 export interface SuccessionEntry {
   card_id: number
   factor_id_array?: number[]
+  factor_info_array?: FactorInfo[]
   win_saddle_id_array?: number[]
   position_id?: number
   owner_viewer_id?: number
@@ -48,7 +55,10 @@ export interface SuccessionEntry {
 
 export interface UmaExtractorRecord {
   card_id: number
-  factor_id_array: number[]
+  /** Legacy exports: plain factor id array. */
+  factor_id_array?: number[]
+  /** Current exports: {factor_id, level} objects. */
+  factor_info_array?: FactorInfo[]
   skill_array?: { skill_id: number; level: number }[]
   win_saddle_id_array?: number[]
   rank_score?: number
@@ -58,6 +68,12 @@ export interface UmaExtractorRecord {
   succession_trained_chara_id_1?: number
   succession_trained_chara_id_2?: number
   succession_chara_array?: SuccessionEntry[]
+}
+
+/** Factor ids from either export format (same id encoding in both). */
+function factorIdsOf(source: { factor_id_array?: number[]; factor_info_array?: FactorInfo[] }): number[] {
+  if (source.factor_id_array && source.factor_id_array.length > 0) return source.factor_id_array
+  return (source.factor_info_array ?? []).map((f) => f.factor_id).filter((id) => typeof id === 'number')
 }
 
 export interface ImportedUma {
@@ -171,7 +187,7 @@ function displayName(cardId: number, data: GameData, suffix = ''): string {
 function importRecord(record: UmaExtractorRecord, data: GameData): ImportedUma | null {
   if (!data.variant(record.card_id)) return null
   const warnings: string[] = []
-  const build = buildFrom(record.card_id, record.factor_id_array ?? [], record.win_saddle_id_array, data, warnings)
+  const build = buildFrom(record.card_id, factorIdsOf(record), record.win_saddle_id_array, data, warnings)
 
   return {
     entry: {
@@ -224,7 +240,7 @@ export function importUmaExtractor(raw: unknown, data: GameData): ImportResult {
     }
     records.push(record)
     umas.push(imported)
-    seenKeys.add(contentKey(record.card_id, record.factor_id_array ?? [], record.win_saddle_id_array))
+    seenKeys.add(contentKey(record.card_id, factorIdsOf(record), record.win_saddle_id_array))
     if (record.trained_chara_id !== undefined) exportedTrainedIds.add(record.trained_chara_id)
   }
 
@@ -239,12 +255,12 @@ export function importUmaExtractor(raw: unknown, data: GameData): ImportResult {
         const linked = anc.position_id === 10 ? record.succession_trained_chara_id_1 : record.succession_trained_chara_id_2
         if (linked !== undefined && exportedTrainedIds.has(linked)) continue
       }
-      const key = contentKey(anc.card_id, anc.factor_id_array ?? [], anc.win_saddle_id_array)
+      const key = contentKey(anc.card_id, factorIdsOf(anc), anc.win_saddle_id_array)
       if (seenKeys.has(key)) continue
       seenKeys.add(key)
 
       const ancWarnings: string[] = []
-      const build = buildFrom(anc.card_id, anc.factor_id_array ?? [], anc.win_saddle_id_array, data, ancWarnings)
+      const build = buildFrom(anc.card_id, factorIdsOf(anc), anc.win_saddle_id_array, data, ancWarnings)
       const borrowed = (anc.owner_viewer_id ?? 0) !== 0
       build.status = borrowed ? 'borrowed' : 'farmed'
       ancestors.push({
@@ -262,6 +278,17 @@ export function importUmaExtractor(raw: unknown, data: GameData): ImportResult {
         warnings: ancWarnings,
       })
     }
+  }
+
+  // Tripwire: if nothing decoded any sparks, the export format has probably
+  // changed again — say so loudly instead of importing empty umas.
+  if (
+    umas.length > 0 &&
+    umas.every(({ entry: { build } }) => !build.blue && !build.pink && !build.green && build.whites.length === 0)
+  ) {
+    warnings.push(
+      'No sparks could be decoded from any record — the UmaExtractor export format may have changed. Please report this.',
+    )
   }
 
   return { umas, ancestors, skipped, warnings }

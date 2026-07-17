@@ -21,6 +21,15 @@ UmaExtractor" in the library panel.
 | `win_saddle_id_array`, `race_result_list` | **not imported** | win-saddle/program ids; no mapping shipped — users add key races manually for shared-win affinity |
 | `succession_chara_array`, `succession_history_array` | **not imported** | contains other players' viewer ids/usernames; privacy |
 
+## Export format versions
+
+Older exports (the rockisch/umadump sample) carry `factor_id_array:
+number[]`. **Current exports (seen 2026-07-17) instead carry
+`factor_info_array: [{factor_id, level}]`** (level observed always 0), on
+veterans AND succession entries; the id encoding is unchanged. The importer
+accepts both, and trips a loud warning if no record decodes any spark
+(format-drift alarm).
+
 ## Factor id decoding (identity + star in one integer)
 
 | Digits | Class | Decode |

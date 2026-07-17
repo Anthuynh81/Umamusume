@@ -82,8 +82,12 @@ export function LibraryView({ data }: { data: GameData }) {
                   for (const { entry } of result.ancestors) await saveUmaToLibrary(entry)
                   ancestorNote = ` + ${result.ancestors.length} ancestors`
                 }
+                const perUmaWarnings = result.umas.flatMap((u) => u.warnings)
+                const allWarnings = [...result.warnings, ...perUmaWarnings]
+                if (allWarnings.length > 0) console.warn('Sparkline import warnings:', allWarnings)
                 setImportNote(
-                  `Imported ${result.umas.length} umas${ancestorNote}${result.skipped ? `, skipped ${result.skipped}` : ''}.`,
+                  `Imported ${result.umas.length} umas${ancestorNote}${result.skipped ? `, skipped ${result.skipped}` : ''}.` +
+                    (allWarnings.length > 0 ? ` ⚠ ${allWarnings.length} warning${allWarnings.length > 1 ? 's' : ''}: ${allWarnings[0]}` : ''),
                 )
                 refresh()
               } catch (err) {

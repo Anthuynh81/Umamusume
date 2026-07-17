@@ -84,6 +84,29 @@ describe('importUmaExtractor', () => {
   it('rejects non-array input', () => {
     expect(() => importUmaExtractor({ not: 'an array' }, data)).toThrow(/UmaExtractor/)
   })
+
+  it('reads the newer factor_info_array export format', () => {
+    const modern = record({
+      factor_id_array: undefined,
+      factor_info_array: [
+        { factor_id: 203, level: 0 },
+        { factor_id: 2201, level: 0 },
+        { factor_id: 2000103, level: 0 },
+        { factor_id: 10010101, level: 0 },
+      ],
+    })
+    const { entry, warnings } = importUmaExtractor([modern], data).umas[0]!
+    expect(entry.build.blue).toEqual({ stat: 'stamina', stars: 3 })
+    expect(entry.build.pink).toEqual({ aptitude: 'pace', stars: 1 })
+    expect(entry.build.whites).toEqual([{ kind: 'skill', refId: 20001, stars: 3 }])
+    expect(entry.build.green).toEqual({ stars: 1 })
+    expect(warnings).toEqual([])
+  })
+
+  it('trips the format alarm when no record decodes any spark', () => {
+    const result = importUmaExtractor([record({ factor_id_array: [], skill_array: [] })], data)
+    expect(result.warnings.some((w) => w.includes('format may have changed'))).toBe(true)
+  })
 })
 
 describe('ancestor import', () => {
