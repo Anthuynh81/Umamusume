@@ -125,16 +125,15 @@ export function LibraryView({ data }: { data: GameData }) {
                       {u.build.blue && `${BLUE_STAT_LABELS[u.build.blue.stat]} ${starStr(u.build.blue.stars)} · `}
                       {u.build.pink && `${APTITUDE_LABELS[u.build.pink.aptitude]} ${starStr(u.build.pink.stars)} · `}
                       {u.build.whites.length} whites
-                      {held.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setExpanded(expanded === u.id ? null : (u.id ?? null))}
-                          aria-expanded={expanded === u.id}
-                          className="ml-1 text-indigo-500 hover:underline"
-                        >
-                          {expanded === u.id ? '▾' : '▸'} {held.length} skills
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(expanded === u.id ? null : (u.id ?? null))}
+                        aria-expanded={expanded === u.id}
+                        className="ml-1 text-indigo-500 hover:underline"
+                      >
+                        {expanded === u.id ? '▾ hide' : '▸ sparks'}
+                        {held.length > 0 ? ` & ${held.length} skills` : ''}
+                      </button>
                       {' · '}
                       {formatDate(u.updatedAt)}
                     </div>
@@ -160,22 +159,57 @@ export function LibraryView({ data }: { data: GameData }) {
                     ✕
                   </button>
                   </div>
-                  {expanded === u.id && held.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1 pl-9">
-                      {held.map((h) => {
-                        const skill = data.skill(h.id)
-                        const cls =
-                          skill?.tier === 'gold' ? 'bg-amber-100 text-amber-800'
-                          : skill?.tier === 'circle' ? 'bg-sky-100 text-sky-800'
-                          : skill?.tier === 'unique' ? 'bg-violet-100 text-violet-800'
-                          : 'bg-slate-100 text-slate-600'
-                        return (
-                          <span key={h.id} className={`rounded px-1.5 py-0.5 text-[10px] ${cls}`}>
-                            {skill?.name ?? `#${h.id}`}
-                            {h.level > 1 && <span className="ml-0.5 opacity-70">Lv{h.level}</span>}
+                  {expanded === u.id && (
+                    <div className="mt-1 space-y-1 pl-9">
+                      <div className="flex flex-wrap gap-1">
+                        {u.build.blue && (
+                          <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] text-sky-800">
+                            {BLUE_STAT_LABELS[u.build.blue.stat]} {starStr(u.build.blue.stars)}
                           </span>
-                        )
-                      })}
+                        )}
+                        {u.build.pink && (
+                          <span className="rounded bg-pink-100 px-1.5 py-0.5 text-[10px] text-pink-800">
+                            {APTITUDE_LABELS[u.build.pink.aptitude]} {starStr(u.build.pink.stars)}
+                          </span>
+                        )}
+                        {u.build.green && (
+                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-800">
+                            {(variant?.uniqueSkillId != null && data.uniqueSkill(variant.uniqueSkillId)?.name) || 'Unique'}{' '}
+                            {starStr(u.build.green.stars)}
+                          </span>
+                        )}
+                        {u.build.whites.map((w) => (
+                          <span key={`${w.kind}:${w.refId}`} className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">
+                            {data.spark(w.refId)?.name ?? `#${w.refId}`} {starStr(w.stars)}
+                          </span>
+                        ))}
+                        {u.build.wonRaces.length > 0 && (
+                          <span
+                            className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] text-violet-800"
+                            title={u.build.wonRaces.map((id) => data.race(id)?.name ?? id).join(', ')}
+                          >
+                            {u.build.wonRaces.length} wins
+                          </span>
+                        )}
+                      </div>
+                      {held.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {held.map((h) => {
+                            const skill = data.skill(h.id)
+                            const cls =
+                              skill?.tier === 'gold' ? 'bg-amber-100 text-amber-800'
+                              : skill?.tier === 'circle' ? 'bg-sky-100 text-sky-800'
+                              : skill?.tier === 'unique' ? 'bg-violet-100 text-violet-800'
+                              : 'bg-slate-100 text-slate-600'
+                            return (
+                              <span key={h.id} className={`rounded px-1.5 py-0.5 text-[10px] ${cls}`}>
+                                {skill?.name ?? `#${h.id}`}
+                                {h.level > 1 && <span className="ml-0.5 opacity-70">Lv{h.level}</span>}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </li>
